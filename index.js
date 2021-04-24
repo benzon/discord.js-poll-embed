@@ -23,6 +23,7 @@ const pollEmbed = async (channel, msg, title, options, timeout = 30, emojiList =
 	let usedEmojiList = emojiList.slice();
 	let text = `*For at stemme tryk på den tilsvarende emoji.\nAfstemningen slutter om **${timeout} sekunder**.\nPersonen der har oprettet poll'en kan afslutte den ved at reagere med ${forceEndPollEmoji} emojien.*\n\n`;
 	const emojiInfo = {};
+	const post = {}
 	for (const option of options) {
 		const emoji = usedEmojiList.splice(0, 1);
 		emojiInfo[emoji] = { option: option, votes: 0 };
@@ -32,14 +33,14 @@ const pollEmbed = async (channel, msg, title, options, timeout = 30, emojiList =
 	usedEmojis.push(forceEndPollEmoji);
 
 	if (!channel) {
-		var poll = await msg.channel.send(embedBuilder('Afstemningen', msg.author.tag).setDescription('Er ved at blive klargjort vent venligst...'));
+		var poll = await msg.channel.send(embedBuilder('Afstemningen', msg.author.tag).setDescription('Er ved at blive klargjort vent venligst...')).catch(function (e) { });
 	} else {
-		var poll = await channel.send(embedBuilder('Afstemningen', msg.author.tag).setDescription('Er ved at blive klargjort vent venligst...'));
+		var poll = await channel.send(embedBuilder('Afstemningen', msg.author.tag).setDescription('Er ved at blive klargjort vent venligst...')).catch(function (e) { });
 	}
-	for (const emoji of usedEmojis) await poll.react(emoji);
-	poll = await poll.edit(embedBuilder(title, msg.author.tag).setDescription(text));
+	for (const emoji of usedEmojis) await poll.react(emoji).catch(function (e) { });
+	poll = await poll.edit(embedBuilder(title, msg.author.tag).setDescription(text)).catch(function (e) { });
 
-	const reactionCollector = poll.createReactionCollector(
+	const reactionCollector = await poll.createReactionCollector(
 		(reaction, user) => usedEmojis.includes(reaction.emoji.name) && !user.bot,
 		timeout === 0 ? {} : { time: timeout * 1000 }
 	);
@@ -51,9 +52,9 @@ const pollEmbed = async (channel, msg, title, options, timeout = 30, emojiList =
 			const votedEmoji = voterInfo.get(user.id).emoji;
 			reaction.users.remove(user.id).catch(function (e) { });
 			if (votedEmoji !== reaction.emoji.name) {
-				const lastVote = poll.reactions.resolve(votedEmoji);
+				const lastVote = poll.reactions.resolve(votedEmoji).catch(function (e) { });
 				lastVote.count -= 1;
-				lastVote.users.remove(user.id);
+				lastVote.users.remove(user.id).catch(function (e) { });
 				emojiInfo[votedEmoji].votes -= 1;
 				voterInfo.set(user.id, { emoji: reaction.emoji.name });
 			}
@@ -63,20 +64,28 @@ const pollEmbed = async (channel, msg, title, options, timeout = 30, emojiList =
 
 	reactionCollector.on('dispose', (reaction, user) => {
 		if (usedEmojis.includes(reaction.emoji.name)) {
-			voterInfo.delete(user.id);
+			voterInfo.delete(user.id).catch(function (e) { });
 			emojiInfo[reaction.emoji.name].votes -= 1;
 		}
 	});
 
 	reactionCollector.on('end', () => {
+		var total = 0
+		post[0] = 1
 		text = '*Resultat af afstemningen*\n\n';
-		for (const emoji in emojiInfo) text += `\`${emojiInfo[emoji].option}\` - \`${emojiInfo[emoji].votes}\`\n\n`;
-		poll.delete();
+		for (const emoji in emojiInfo) {
+			text += `\`${emojiInfo[emoji].option}\` - \`${emojiInfo[emoji].votes}\`\n\n`
+			total = total + emojiInfo[emoji].votes;
+		}
+		text += `Stemmer afgivet: ${total}\n\n`
+		poll.delete().catch(function (e) {
+			post[0] = 0
+		});
 
-		if (!channel) {
-			msg.channel.send(embedBuilder(title, msg.author.tag).setDescription(text));
-		} else {
-			channel.send(embedBuilder(title, msg.author.tag).setDescription(text));
+		if (!channel && post === 1) {
+			msg.channel.send(embedBuilder(title, msg.author.tag).setDescription(text)).catch(function (e) { });
+		} else if (post === 1) {
+			channel.send(embedBuilder(title, msg.author.tag).setDescription(text)).catch(function (e) { });
 		}
 	});
 };
