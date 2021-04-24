@@ -13,15 +13,15 @@ const defEmojiList = [
 	'\uD83D\uDD1F'
 ];
 
-const pollEmbed = async (msg, title, options, timeout = 30, emojiList = defEmojiList, forceEndPollEmoji = '\u2705') => {
-	if (!msg && !msg.channel) return msg.reply('Channel is inaccessible.');
-	if (!title) return msg.reply('Poll title is not given.');
-	if (!options) return msg.reply('Poll options are not given.');
-	if (options.length < 2) return msg.reply('Please provide more than one choice.');
-	if (options.length > emojiList.length) return msg.reply(`Please provide ${emojiList.length} or less choices.`);
+const pollEmbed = async (channel, msg, title, options, timeout = 30, emojiList = defEmojiList, forceEndPollEmoji = '\u2705') => {
+	if (!msg && !msg.channel) return msg.reply('Har ikke adgang til at skrive i kanalen.');
+	if (!title) return msg.reply('Der er ikke angivet en titel på afstemningen.');
+	if (!options) return msg.reply('Der er ikke oprettet nogle svar muligheder.');
+	if (options.length < 2) return msg.reply('Du skal angive minimum 2 svar muligheder.');
+	if (options.length > emojiList.length) return msg.reply(`Du har oprettet for mange spørgsmål du kan max have ${emojiList.length}.`);
 
 	let usedEmojiList = emojiList.slice();
-	let text = `*To vote, react using the correspoding emoji.\nThe voting will end in **${timeout} seconds**.\nPoll creater can end the poll **forcefully** by reacting to ${forceEndPollEmoji} emoji.*\n\n`;
+	let text = `*For at stemme tryk på den tilsvarende emoji.\nAfstemningen slutter om **${timeout} sekunder**.\nPersonen der har oprettet poll'en kan afslutte den ved at reagere med ${forceEndPollEmoji} emojien.*\n\n`;
 	const emojiInfo = {};
 	for (const option of options) {
 		const emoji = usedEmojiList.splice(0, 1);
@@ -31,8 +31,13 @@ const pollEmbed = async (msg, title, options, timeout = 30, emojiList = defEmoji
 	const usedEmojis = Object.keys(emojiInfo);
 	usedEmojis.push(forceEndPollEmoji);
 
-	const poll = await msg.channel.send(embedBuilder(title, msg.author.tag).setDescription(text));
+	if (!channel) {
+		var poll = await msg.channel.send(embedBuilder('Afstemningen', msg.author.tag).setDescription('Er ved at blive klargjort vent venligst...'));
+	} else {
+		var poll = await channel.send(embedBuilder('Afstemningen', msg.author.tag).setDescription('Er ved at blive klargjort vent venligst...'));
+	}
 	for (const emoji of usedEmojis) await poll.react(emoji);
+	poll = await poll.edit(embedBuilder(title, msg.author.tag).setDescription(text));
 
 	const reactionCollector = poll.createReactionCollector(
 		(reaction, user) => usedEmojis.includes(reaction.emoji.name) && !user.bot,
@@ -44,6 +49,7 @@ const pollEmbed = async (msg, title, options, timeout = 30, emojiList = defEmoji
 			if (reaction.emoji.name === forceEndPollEmoji && msg.author.id === user.id) return reactionCollector.stop();
 			if (!voterInfo.has(user.id)) voterInfo.set(user.id, { emoji: reaction.emoji.name });
 			const votedEmoji = voterInfo.get(user.id).emoji;
+			reaction.users.remove(user.id).catch(function (e) { });
 			if (votedEmoji !== reaction.emoji.name) {
 				const lastVote = poll.reactions.resolve(votedEmoji);
 				lastVote.count -= 1;
@@ -63,17 +69,22 @@ const pollEmbed = async (msg, title, options, timeout = 30, emojiList = defEmoji
 	});
 
 	reactionCollector.on('end', () => {
-		text = '*Ding! Ding! Ding! Time\'s up!\n Results are in,*\n\n';
+		text = '*Resultat af afstemningen*\n\n';
 		for (const emoji in emojiInfo) text += `\`${emojiInfo[emoji].option}\` - \`${emojiInfo[emoji].votes}\`\n\n`;
 		poll.delete();
-		msg.channel.send(embedBuilder(title, msg.author.tag).setDescription(text));
+
+		if (!channel) {
+			msg.channel.send(embedBuilder(title, msg.author.tag).setDescription(text));
+		} else {
+			channel.send(embedBuilder(title, msg.author.tag).setDescription(text));
+		}
 	});
 };
 
 const embedBuilder = (title, author) => {
 	return new MessageEmbed()
 		.setTitle(`Poll - ${title}`)
-		.setFooter(`Poll created by ${author}`);
+		.setFooter(`Poll oprettet af ${author}`);
 };
 
 module.exports = pollEmbed;
