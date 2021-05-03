@@ -35,9 +35,9 @@ const pollEmbed = async (channel, msg, title, options, timeout = 30, emojiList =
 	usedEmojis.push(forceEndPollEmoji);
 
 	if (!channel) {
-		var poll = await msg.channel.send(embedBuilder(i18n.__('Poll'), msg.author.tag).setDescription(i18n.__('Is being created wait a moment...'))).catch(function (e) { });
+		var poll = await msg.channel.send(embedBuilder(title, msg.author.tag).setDescription(i18n.__('Is being created wait a moment...'))).catch(function (e) { });
 	} else {
-		var poll = await channel.send(embedBuilder(i18n.__('Poll'), msg.author.tag).setDescription(i18n.__('Is being created wait a moment...'))).catch(function (e) { });
+		var poll = await channel.send(embedBuilder(title, msg.author.tag).setDescription(i18n.__('Is being created wait a moment...'))).catch(function (e) { });
 	}
 	for (const emoji of usedEmojis) await poll.react(emoji).catch(function (e) { });
 	poll = await poll.edit(embedBuilder(title, msg.author.tag).setDescription(text)).catch(function (e) { });
@@ -79,7 +79,7 @@ const pollEmbed = async (channel, msg, title, options, timeout = 30, emojiList =
 			text += `\`${emojiInfo[emoji].option}\` - \`${emojiInfo[emoji].votes}\`\n\n`
 			total = total + emojiInfo[emoji].votes;
 		}
-		text += `Stemmer afgivet: ${total}\n\n`
+		text += i18n.__('Votes cast: %s\n\n', total)
 		poll.delete().catch(function (e) {
 			post[0] = 0
 		});
