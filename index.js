@@ -1,4 +1,5 @@
 const { MessageEmbed } = require('discord.js');
+const i18n = require('i18n');
 
 const defEmojiList = [
 	'\u0031\u20E3',
