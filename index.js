@@ -15,14 +15,15 @@ const defEmojiList = [
 ];
 
 const pollEmbed = async (channel, msg, title, options, timeout = 30, emojiList = defEmojiList, forceEndPollEmoji = '\u2705') => {
-	if (!msg && !msg.channel) return msg.reply('Har ikke adgang til at skrive i kanalen.');
-	if (!title) return msg.reply('Der er ikke angivet en titel på afstemningen.');
-	if (!options) return msg.reply('Der er ikke oprettet nogle svar muligheder.');
-	if (options.length < 2) return msg.reply('Du skal angive minimum 2 svar muligheder.');
-	if (options.length > emojiList.length) return msg.reply(`Du har oprettet for mange spørgsmål du kan max have ${emojiList.length}.`);
+	if (!msg && !msg.channel) return msg.reply(i18n.__('Channel is inaccessible.'));
+	if (!title) return msg.reply(i18n.__('Poll title is not given.'));
+	if (!options) return msg.reply(i18n.__('Poll options are not given.'));
+	if (options.length < 2) return msg.reply(i18n.__('Please provide more than one choice.'));
+	if (options.length > emojiList.length) return msg.reply(i18n.__('Please provide %s or less choices.', emojiList.length));
 
 	let usedEmojiList = emojiList.slice();
-	let text = `*For at stemme tryk på den tilsvarende emoji.\nAfstemningen slutter om **${timeout} sekunder**.\nPersonen der har oprettet poll'en kan afslutte den ved at reagere med ${forceEndPollEmoji} emojien.*\n\n`;
+	let text = i18n.__('*To vote, react using the correspoding emoji.\nThe voting will end in **%s seconds**.\nPoll creater can end the poll **forcefully** by reacting to %s emoji.*\n\n', timeout, forceEndPollEmoji);
+	
 	const emojiInfo = {};
 	const post = {}
 	for (const option of options) {
@@ -34,9 +35,9 @@ const pollEmbed = async (channel, msg, title, options, timeout = 30, emojiList =
 	usedEmojis.push(forceEndPollEmoji);
 
 	if (!channel) {
-		var poll = await msg.channel.send(embedBuilder('Afstemningen', msg.author.tag).setDescription('Er ved at blive klargjort vent venligst...')).catch(function (e) { });
+		var poll = await msg.channel.send(embedBuilder(i18n.__('Poll'), msg.author.tag).setDescription(i18n.__('Is being created wait a moment...'))).catch(function (e) { });
 	} else {
-		var poll = await channel.send(embedBuilder('Afstemningen', msg.author.tag).setDescription('Er ved at blive klargjort vent venligst...')).catch(function (e) { });
+		var poll = await channel.send(embedBuilder(i18n.__('Poll'), msg.author.tag).setDescription(i18n.__('Is being created wait a moment...'))).catch(function (e) { });
 	}
 	for (const emoji of usedEmojis) await poll.react(emoji).catch(function (e) { });
 	poll = await poll.edit(embedBuilder(title, msg.author.tag).setDescription(text)).catch(function (e) { });
@@ -73,7 +74,7 @@ const pollEmbed = async (channel, msg, title, options, timeout = 30, emojiList =
 	reactionCollector.on('end', () => {
 		var total = 0
 		post[0] = 1
-		text = '*Resultat af afstemningen*\n\n';
+		text = i18n.__('*Poll result*\n\n');
 		for (const emoji in emojiInfo) {
 			text += `\`${emojiInfo[emoji].option}\` - \`${emojiInfo[emoji].votes}\`\n\n`
 			total = total + emojiInfo[emoji].votes;
@@ -83,9 +84,9 @@ const pollEmbed = async (channel, msg, title, options, timeout = 30, emojiList =
 			post[0] = 0
 		});
 
-		if (!channel && post === 1) {
+		if (!channel && post[0] === 1) {
 			msg.channel.send(embedBuilder(title, msg.author.tag).setDescription(text)).catch(function (e) { });
-		} else if (post === 1) {
+		} else if (post[0] === 1) {
 			channel.send(embedBuilder(title, msg.author.tag).setDescription(text)).catch(function (e) { });
 		}
 	});
@@ -93,8 +94,8 @@ const pollEmbed = async (channel, msg, title, options, timeout = 30, emojiList =
 
 const embedBuilder = (title, author) => {
 	return new MessageEmbed()
-		.setTitle(`Poll - ${title}`)
-		.setFooter(`Poll oprettet af ${author}`);
+		.setTitle(i18n.__('Poll - %s', title))
+		.setFooter(i18n.__('Poll created by %s', author));
 };
 
 module.exports = pollEmbed;
